@@ -4,12 +4,13 @@ from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
 SECRETS_DIR = os.path.join(os.path.expanduser('~'), '.google_drive')
-SECRETS_FILE = "client_secrets.json"
+SECRETS_FILE = "credentials.json"
 CREDS_FILE = "credentials.txt"
 SECRETS_PATH = os.path.join(SECRETS_DIR, SECRETS_FILE)
 CREDS_PATH = os.path.join(SECRETS_DIR, CREDS_FILE)
 LIST_CMD = {'q': "'root' in parents and trashed=false"}
 
+GoogleAuth.DEFAULT_SETTINGS['client_config_file'] = SECRETS_PATH
 
 class Downloader(object):
     """
@@ -24,11 +25,12 @@ class Downloader(object):
             if not os.path.exists(SECRETS_DIR):
                 os.mkdir(SECRETS_DIR)
 
-            raise RuntimeError("Please put a client_secrets.json file in %s"
-                               % SECRETS_DIR)
+            raise RuntimeError("Please put a %s file in %s" % (SECRETS_FILE,
+                                                               SECRETS_DIR))
         
         gauth = GoogleAuth()
         gauth.LoadCredentialsFile(CREDS_PATH)
+
         if gauth.credentials is None:
             gauth.LocalWebserverAuth()
         elif gauth.access_token_expired:

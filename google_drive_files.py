@@ -90,7 +90,7 @@ class Downloader(object):
         if self._drive is None:
             raise RuntimeError("Not authenticated")
 
-        file_list = self._drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
+        file_list = self._drive.ListFile(LIST_CMD).GetList()
         return [f['title'] for f in file_list]
 
 

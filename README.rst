@@ -1,6 +1,12 @@
 First time setup
 ================
 
+#. Install PyDrive package:
+
+   ::
+
+       pip install pydrive
+
 #. Open a browser and log into the Google Drive account that you would like to
    access files from
 

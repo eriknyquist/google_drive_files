@@ -15,7 +15,7 @@ GoogleAuth.DEFAULT_SETTINGS['client_config_file'] = SECRETS_PATH
 class Downloader(object):
     """
     Wrapper class to simplify authentication & file listing with Google Drive
-    using PyDrive
+    using PyDrive.
     """
 
     def __init__(self):
@@ -41,12 +41,15 @@ class Downloader(object):
         gauth.SaveCredentialsFile(CREDS_PATH)
         self._drive = GoogleDrive(gauth)
 
-    def get_file(self, filename):
+    def download_file(self, filename, force=False):
         """
-        Download a file from authenticated google drive account by filename
+        Download a file from authenticated google drive account by filename.
 
-        :param str filename: name of file to download
-        :return: True if file was downloaded successfully, False otherwise
+        :param str filename: name of file to download.
+        :param bool force: if True, the file will be ovewritten if it already\
+            exists locally. If False, an exception will be thrown if the file\
+            already exists locally.
+        :return: True if file was downloaded successfully, False otherwise.
         :rtype: bool
         """
 
@@ -56,6 +59,10 @@ class Downloader(object):
         file_list = self._drive.ListFile(LIST_CMD).GetList()
         for filedata in file_list:
             if filedata['title'] == filename:
+                if (not force) and os.path.exists(filename):
+                    raise RuntimeError("local file already exists: %s"
+                                       % filename)
+
                 try:
                     filedata.GetContentFile(filename)
                 except Exception as e:
@@ -68,9 +75,9 @@ class Downloader(object):
 
     def file_listing(self):
         """
-        Get a list of the names of files available to download
+        Get a list of the names of files available to download.
 
-        :return: list of filenames available for download
+        :return: list of filenames available for download.
         :rtype: list
         """
 
@@ -85,3 +92,5 @@ if __name__ == "__main__":
     d = Downloader()
     for filename in d.file_listing():
         print filename
+
+    d.download_file("2am.mp3")

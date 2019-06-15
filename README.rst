@@ -56,7 +56,7 @@ filenames with ``file_listing()``. The following example shows both:
     >>> d = Downloader()
     >>> d.file_listing()
     [u'file1.txt', u'file2.txt', u'file3.txt']
-    >>> d.download_file('file1.txt')
+    >>> d.download_files(['file1.txt', 'file3.txt'])
     True
     >>>
 

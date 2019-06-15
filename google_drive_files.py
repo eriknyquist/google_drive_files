@@ -41,37 +41,43 @@ class Downloader(object):
         gauth.SaveCredentialsFile(CREDS_PATH)
         self._drive = GoogleDrive(gauth)
 
-    def download_file(self, filename, force=False):
+    def download_files(self, filenames, force=False):
         """
         Download a file from authenticated google drive account by filename.
 
-        :param str filename: name of file to download.
+        :param list filenames: list of names of files to download.
         :param bool force: if True, the file will be ovewritten if it already\
             exists locally. If False, an exception will be thrown if the file\
             already exists locally.
-        :return: True if file was downloaded successfully, False otherwise.
+        :return: True if all files were downloaded successfully.
         :rtype: bool
         """
 
         if self._drive is None:
             raise RuntimeError("Not authenticated")
 
+        downloaded = 0
         file_list = self._drive.ListFile(LIST_CMD).GetList()
+
         for filedata in file_list:
-            if filedata['title'] == filename:
-                if (not force) and os.path.exists(filename):
+            # If we've already download all requested files, we're done
+            if downloaded == len(filenames):
+                break
+
+            if filedata['title'] in filenames:
+                if (not force) and os.path.exists(filedata['title']):
                     raise RuntimeError("local file already exists: %s"
-                                       % filename)
+                                       % filedata['title'])
 
                 try:
-                    filedata.GetContentFile(filename)
+                    filedata.GetContentFile(filedata['title'])
                 except Exception as e:
                     print(e)
                     return False
 
-                return True
+                downloaded += 1
 
-        return False
+        return downloaded == len(filenames)
 
     def file_listing(self):
         """
@@ -92,5 +98,3 @@ if __name__ == "__main__":
     d = Downloader()
     for filename in d.file_listing():
         print filename
-
-    d.download_file("2am.mp3")

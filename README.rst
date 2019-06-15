@@ -46,9 +46,10 @@ First time setup
 Downloading files
 =================
 
-If you already know the name of the file you want you can just call
-``download_file()`` with the filename. Otherwise, you can get a list of available
-filenames with ``file_listing()``. The following example shows both:
+If you already know the names of the files you want you can just call
+``download_files()`` with a list of the desired filenames. Otherwise, you can
+get a list of available filenames with ``file_listing()``. The following example
+shows both:
 
 ::
 

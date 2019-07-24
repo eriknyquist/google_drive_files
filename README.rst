@@ -47,7 +47,7 @@ Downloading files
 =================
 
 If you already know the names of the files you want you can just call
-``download_files()`` with a list of the desired filenames. Otherwise, you can
+``download_file()`` for each of the desired filenames. Otherwise, you can
 get a list of available filenames with ``file_listing()``. The following example
 shows both:
 
@@ -56,8 +56,9 @@ shows both:
     >>> from google_drive_files import Downloader
     >>> d = Downloader()
     >>> d.file_listing()
-    [u'file1.txt', u'file2.txt', u'file3.txt']
-    >>> d.download_files(['file1.txt', 'file3.txt'])
-    True
+    [u'file1.txt', u'folder/file2.txt', u'folder/subfolder/file3.txt']
+    >>> d.download_file('file1.txt')
+    >>> d.download_file('folder/file2.txt')
+    >>> d.download_file('folder/subfolder/file3.txt')
     >>>
 

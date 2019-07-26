@@ -92,29 +92,23 @@ class Downloader(object):
 
         return ret
 
-    # Given the path to a drive file, find the ID of the containing folder
-    def _get_folder_id_from_path(self, path_components):
-        if self._tree is None:
-            self._tree = self._build_tree()
-
-        dirnames = path_components[:-1]
+    # Given the path to a directory, return the tree data for that directory
+    def _get_dir_tree_from_path(self, path_components):
         curr = self._tree
-        folder_id = None
         i = 0
 
-        for i in range(len(dirnames)):
+        for i in range(len(path_components)):
             found = False
             for item in curr:
-                if (type(item) is dict) and (item[DIR_NAME_KEY] == dirnames[i]):
+                if (type(item) is dict) and (item[DIR_NAME_KEY] == path_components[i]):
                     curr = item[DIR_LIST_KEY]
-                    folder_id = item[DIR_ID_KEY]
                     found = True
                     break
 
             if not found:
                 return None
 
-        return folder_id
+        return curr
 
     # Get a list of filenames in the given directory
     def _list_files_in_dir(self, dir_id='root'):
@@ -138,6 +132,9 @@ class Downloader(object):
         if self._drive is None:
             raise RuntimeError("Not authenticated")
 
+        if self._tree is None:
+            self._tree = self._build_tree()
+
         filename = None
         folderid = None
 
@@ -148,10 +145,11 @@ class Downloader(object):
             filename = file_path
         else:
             # Path has multiple parts, find corresponding subfolder ID
-            folderid = self._get_folder_id_from_path(parts)
-            if folderid is None:
+            dirtree = self._get_dir_tree_from_path(parts[:-1])
+            if dirtree is None:
                 self._file_not_found(file_path)
 
+            folderid = dirtree[DIR_ID_KEY]
             filename = parts[-1]
 
         file_list = self._list_files_in_dir(folderid)
@@ -167,12 +165,14 @@ class Downloader(object):
 
         self._file_not_found(file_path)
 
-    def file_listing(self):
+    def file_listing(self, directory_name=None):
         """
         Get a list of the names of files available to dowload. Subfolders are
         indicated using the standard path seperator for your system, e.g.
         ["folder/file1.txt", "folder/subfolder/file2.txt"]
 
+        :param str directory_name: name of directory to list files under. If \
+            unset, the root directory will be used.
         :return: list of filenames available for download.
         :rtype: list
         """
@@ -180,8 +180,18 @@ class Downloader(object):
         if self._drive is None:
             raise RuntimeError("Not authenticated")
 
-        self._tree = self._build_tree()
-        return self._file_listing_from_tree(self._tree)
+        if self._tree is None:
+            self._tree = self._build_tree()
+
+        if directory_name is None:
+            dir_tree = self._tree
+            parentname = ''
+        else:
+            parts = pathsplit(directory_name)
+            dir_tree = self._get_dir_tree_from_path(parts)
+            parentname = directory_name
+
+        return self._file_listing_from_tree(dir_tree, parentname)
 
 if __name__ == "__main__":
     d = Downloader()

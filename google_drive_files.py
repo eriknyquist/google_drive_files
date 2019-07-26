@@ -101,6 +101,9 @@ class Downloader(object):
             found = False
             for item in curr:
                 if (type(item) is dict) and (item[DIR_NAME_KEY] == path_components[i]):
+                    if i == (len(path_components) - 1):
+                        return item
+
                     curr = item[DIR_LIST_KEY]
                     found = True
                     break
@@ -108,7 +111,7 @@ class Downloader(object):
             if not found:
                 return None
 
-        return curr
+        return None
 
     # Get a list of filenames in the given directory
     def _list_files_in_dir(self, dir_id='root'):
@@ -118,15 +121,17 @@ class Downloader(object):
     def _file_not_found(self, filename):
         raise RuntimeError("Unable to find file '%s'" % filename)
 
-    def download_file(self, file_path, force=False):
+    def download_files(self, file_paths, force=False):
         """
         Download a file from authenticated google drive account by filename.
         Raises RuntimeError if downloading the file fails for any reason.
 
-        :param str file_path: path to file to download.
-        :param bool force: if True, the file will be ovewritten if it already\
-            exists locally. If False, an exception will be thrown if the file\
-            already exists locally.
+        :param [str] file_paths: List of paths to files to download.
+        :param bool force: if True, files will be ovewritten if they already\
+            exist locally. If False, an exception will be thrown if they \
+            already exist locally.
+        :return: True if all files were downloaded
+        :rtype: bool
         """
 
         if self._drive is None:
@@ -135,35 +140,55 @@ class Downloader(object):
         if self._tree is None:
             self._tree = self._build_tree()
 
-        filename = None
-        folderid = None
+        # Build dict of folder IDs and filename lists
+        files_to_download = {}
+        default_id = 'root'
 
-        parts = pathsplit(file_path)
-        if len(parts) == 1:
-            # Path has 1 part only, no subfolders
-            folderid = 'root'
-            filename = file_path
-        else:
-            # Path has multiple parts, find corresponding subfolder ID
-            dirtree = self._get_dir_tree_from_path(parts[:-1])
-            if dirtree is None:
-                self._file_not_found(file_path)
+        for filename in file_paths:
+            parts = pathsplit(filename)
+            if len(parts) == 1:
+                if default_id not in files_to_download:
+                    files_to_download[default_id] = []
 
-            folderid = dirtree[DIR_ID_KEY]
-            filename = parts[-1]
+                files_to_download[default_id].append(filename)
 
+            else:
+                dirtree = self._get_dir_tree_from_path(parts[:-1])
+                if dirtree is None:
+                    self._file_not_found
+
+                folderid = dirtree[DIR_ID_KEY]
+                if folderid not in files_to_download:
+                    files_to_download[folderid] = []
+
+                files_to_download[folderid].append(parts[-1])
+
+        statuses = []
+        for folderid in files_to_download:
+            ret = self._download_files_from_dir(folderid, files_to_download[folderid], force)
+            statuses.append(ret)
+
+        return False in statuses
+
+    # Download one or more files from the same directory
+    def _download_files_from_dir(self, folderid, filenames, force):
         file_list = self._list_files_in_dir(folderid)
+        num_downloaded = 0
 
         for filedata in file_list:
-            if filedata['title'] == filename:
+            if filedata['title'] in filenames:
                 if (not force) and os.path.exists(filedata['title']):
                     raise RuntimeError("local file already exists: %s"
                                        % filedata['title'])
 
-                filedata.GetContentFile(filedata['title'])
-                return
+                try:
+                    filedata.GetContentFile(filedata['title'])
+                except Exception as e:
+                    print("Failed to download file %s: %s" % (filedata["title"], str(e)))
+                else:
+                    num_downloaded += 1
 
-        self._file_not_found(file_path)
+        return num_downloaded == len(filenames)
 
     def file_listing(self, directory_name=None):
         """
@@ -195,8 +220,16 @@ class Downloader(object):
 
 if __name__ == "__main__":
     d = Downloader()
-    for filename in d.file_listing():
-        print(filename)
+    #for filename in d.file_listing():
+    #    print(filename)
+
+    d.download_files([
+        "testfolder/subfolder/anothersubfolder/criminal_intent.mp3",
+        "testfolder/subfolder/33.mp3",
+        "testfolder/subfolder/caballero.mp3",
+        "testfolder/2am_end.mp3",
+        "testfolder/2am.mp3"
+    ])
 
     # Example output:
     # ['file1.txt', 'subfolder/file2.txt']

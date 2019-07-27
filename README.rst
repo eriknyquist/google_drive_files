@@ -57,8 +57,27 @@ shows both:
     >>> d = Downloader()
     >>> d.file_listing()
     [u'file1.txt', u'folder/file2.txt', u'folder/subfolder/file3.txt']
-    >>> d.download_file('file1.txt')
-    >>> d.download_file('folder/file2.txt')
-    >>> d.download_file('folder/subfolder/file3.txt')
+    >>> d.download_files(['file1.txt', 'folder/file2.txt'])
     >>>
 
+This example downloads two files into the current directory. You can also specify
+an explicit destination path for each filename, which the next example shows:
+
+Downloading files with explicit destination paths
+=================================================
+
+To specify a destination path, pass a tuple with two items to ``download_files``
+instead of string, where the first item is the source filename and the second item
+is the destination filename. The following example is the same as the previous
+example, except that it specifies explicit destination path for all files downloaded:
+
+::
+
+    >>> from google_drive_files import Downloader
+    >>> d = Downloader()
+    >>> d.file_listing()
+    [u'file1.txt', u'folder/file2.txt', u'folder/subfolder/file3.txt']
+    >>> file1 = ('file1.txt', '/home/file1.txt')
+    >>> file2 = ('folder/file2.txt', '/home/file2.txt')
+    >>> d.download_files([file1, file2])
+    >>>

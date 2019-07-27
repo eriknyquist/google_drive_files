@@ -119,14 +119,19 @@ class Downloader(object):
         return self._drive.ListFile(list_cmd).GetList()
 
     def _file_not_found(self, filename):
-        raise RuntimeError("Unable to find file '%s'" % filename)
+        raise RuntimeError("Unable to find drive file '%s'" % filename)
 
     def download_files(self, file_paths, force=False):
         """
         Download a file from authenticated google drive account by filename.
         Raises RuntimeError if downloading the file fails for any reason.
 
-        :param [str] file_paths: List of paths to files to download.
+        :param list file_paths: List of files to download. Items in the list\
+            can either be be the filename of the file to download as a string,\
+            where the file will be downloaded with the same name in the current\
+            local directory, or a tuple of the form ``(src, dest)``, where\
+            ``src`` is the name of the file to download and ``dest`` is the \
+            name of the file to create on your local system.
         :param bool force: if True, files will be ovewritten if they already\
             exist locally. If False, an exception will be thrown if they \
             already exist locally.
@@ -144,25 +149,46 @@ class Downloader(object):
         files_to_download = {}
         default_id = 'root'
 
-        for filename in file_paths:
+        for pathdata in file_paths:
+            filename = None
+            dest_filename = None
+
+            if type(pathdata) in [str, unicode]:
+                # dest. file will use the same filename as source file
+                filename = pathdata
+                dest_filename = os.path.basename(pathdata)
+            elif (type(pathdata) == tuple) and (len(pathdata) == 2):
+                # dest. filename given
+                filename, dest_filename = pathdata
+            else:
+                raise ValueError("Error downloading file '%s': download paths "
+                                 "must be string, or tuple with two items" % pathdata)
+
+            # use our internal tree representation of all files and subdirectories
+            # to convert the given list of filenames to a dict, where the key is
+            # a directory ID and the value is a list of filenames inside that
+            # directory.
             parts = pathsplit(filename)
             if len(parts) == 1:
+                # file is in root directory, no need to find a directory ID
                 if default_id not in files_to_download:
                     files_to_download[default_id] = []
 
-                files_to_download[default_id].append(filename)
+                files_to_download[default_id].append((filename, dest_filename))
 
             else:
+                # file is in subdirectory, find containing directory ID
                 dirtree = self._get_dir_tree_from_path(parts[:-1])
                 if dirtree is None:
-                    self._file_not_found
+                    self._file_not_found(filename)
 
                 folderid = dirtree[DIR_ID_KEY]
                 if folderid not in files_to_download:
                     files_to_download[folderid] = []
 
-                files_to_download[folderid].append(parts[-1])
+                files_to_download[folderid].append((parts[-1], dest_filename))
 
+        # download all files, one subdirectory at a time
         statuses = []
         for folderid in files_to_download:
             ret = self._download_files_from_dir(folderid, files_to_download[folderid], force)
@@ -174,17 +200,18 @@ class Downloader(object):
     def _download_files_from_dir(self, folderid, filenames, force):
         file_list = self._list_files_in_dir(folderid)
         num_downloaded = 0
+        dest_map = {src: dest for src, dest in filenames}
 
         for filedata in file_list:
-            if filedata['title'] in filenames:
-                if (not force) and os.path.exists(filedata['title']):
-                    raise RuntimeError("local file already exists: %s"
-                                       % filedata['title'])
+            if filedata['title'] in dest_map:
+                dest_filename = dest_map[filedata['title']]
+                if (not force) and os.path.exists(dest_filename):
+                    raise RuntimeError("local file already exists: %s" % dest_filename)
 
                 try:
-                    filedata.GetContentFile(filedata['title'])
+                    filedata.GetContentFile(dest_filename)
                 except Exception as e:
-                    print("Failed to download file %s: %s" % (filedata["title"], str(e)))
+                    print("Failed to download file %s: %s" % (dest_filename, str(e)))
                 else:
                     num_downloaded += 1
 
@@ -220,19 +247,17 @@ class Downloader(object):
 
 if __name__ == "__main__":
     d = Downloader()
-    #for filename in d.file_listing():
-    #    print(filename)
-
-    d.download_files([
-        "testfolder/subfolder/anothersubfolder/criminal_intent.mp3",
-        "testfolder/subfolder/33.mp3",
-        "testfolder/subfolder/caballero.mp3",
-        "testfolder/2am_end.mp3",
-        "testfolder/2am.mp3"
-    ])
+    for filename in d.file_listing():
+        print(filename)
 
     # Example output:
     # ['file1.txt', 'subfolder/file2.txt']
 
-    # Example of downloading a file:
-    # d.download_file('subfolder/file2.txt')
+    # Example of downloading files into the current directory:
+    # d.download_files(['file1.txt', 'subfolder/file2.txt'])
+
+    # Example of downloading files with explicit destination paths:
+    # d.download_files([
+    #    ('file1.txt', '/home/file1.txt'),
+    #    ('subfolder/file2.txt', '/home/file2.txt')
+    # ])
